@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Carrito - Inti Perú</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body { background: #fafafa; }
+    .card { border-radius: 12px; }
+    .total-box { 
+      background: #fff; 
+      padding: 15px; 
+      border-radius: 12px; 
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1); 
+    }
+    .btn-danger, .btn-success { border-radius: 10px; }
+
+    #metodosPago {
+      display: none;
+      padding: 20px;
+      border-radius: 12px;
+      background: #fff;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      margin-top: 20px;
+    }
+
+    .pay-option {
+      border: 1px solid #ddd;
+      padding: 15px;
+      border-radius: 10px;
+      transition: 0.2s;
+      cursor: pointer;
+    }
+
+    .pay-option:hover {
+      background: #f5f5f5;
+      transform: scale(1.01);
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- VALIDAR SESIÓN -->
+  <script>
+    if (!localStorage.getItem("usuarioNombre")) {
+      alert("Debes iniciar sesión para ver el carrito.");
+      window.location.href = "login.html";
+    }
+  </script>
+
+  <!-- NAVBAR -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-danger">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="index.html">
+        <img src="logo2.png" style="height:35px; margin-right:5px;"> Inti Perú
+      </a>
+    </div>
+  </nav>
+
+  <!-- CARRITO -->
+  <div class="container my-5">
+    <h2 class="text-center mb-4">🛒 Carrito de Compras</h2>
+
+    <div class="card shadow p-4">
+      <ul id="lista-carrito" class="list-group mb-3"></ul>
+
+      <div class="total-box mt-4">
+        <h4 class="text-center">
+          Total a pagar: <strong>S/ <span id="total">0.00</span></strong>
+        </h4>
+      </div>
+
+      <div class="d-flex justify-content-between mt-4">
+        <button class="btn btn-success btn-lg" onclick="mostrarMetodosPago()">💳 Ir a Pagar</button>
+        <button class="btn btn-secondary btn-lg" id="vaciarBtn">🗑️ Vaciar Carrito</button>
+      </div>
+
+      <!-- MÉTODOS DE PAGO -->
+      <div id="metodosPago">
+        <h4 class="text-center mb-3">Selecciona un método de pago</h4>
+
+        <div class="pay-option mb-2" onclick="procesarPago('Tarjeta')">💳 Pago con Tarjeta</div>
+        <div class="pay-option mb-2" onclick="procesarPago('Yape')">📱 Yape</div>
+        <div class="pay-option mb-2" onclick="procesarPago('Plin')">📲 Plin</div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- JS PDF LIBRARY -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+
+  <!-- JS -->
+  <script>
+    let carrito = JSON.parse(localStorage.getItem("carrito")) || [];
+
+    function mostrarCarrito() {
+      const lista = document.getElementById("lista-carrito");
+      lista.innerHTML = "";
+      let total = 0;
+
+      carrito.forEach((item, index) => {
+        total += item.precio;
+
+        lista.innerHTML += `
+          <li class="list-group-item d-flex justify-content-between align-items-center">
+            <div>
+              <strong>${item.nombre}</strong><br>
+              <small class="text-muted">S/ ${item.precio.toFixed(2)}</small>
+            </div>
+            <button class="btn btn-sm btn-danger" onclick="eliminarItem(${index})">Eliminar</button>
+          </li>
+        `;
+      });
+
+      document.getElementById("total").textContent = total.toFixed(2);
+    }
+
+    function eliminarItem(index) {
+      carrito.splice(index, 1);
+      localStorage.setItem("carrito", JSON.stringify(carrito));
+      mostrarCarrito();
+    }
+
+    function vaciarCarrito() {
+      if (confirm("¿Seguro quieres vaciar el carrito?")) {
+        carrito = [];
+        localStorage.setItem("carrito", JSON.stringify(carrito));
+        mostrarCarrito();
+      }
+    }
+
+    function mostrarMetodosPago() {
+      if (carrito.length === 0) {
+        alert("Tu carrito está vacío.");
+        return;
+      }
+      document.getElementById("metodosPago").style.display = "block";
+      window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+    }
+
+    /* GENERADOR DE SERIE Y CORRELATIVO */
+    function siguienteCorrelativo() {
+      let num = localStorage.getItem("correlativoBoleta") || 1;
+      num = parseInt(num) + 1;
+      localStorage.setItem("correlativoBoleta", num);
+      return num;
+    }
+
+    /* 🔥 GENERAR BOLETA SUNAT PDF */
+    function generarBoletaSUNAT(pedido) {
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF();
+
+      /* DATOS SUNAT */
+      const serie = "B001";
+      const correlativo = siguienteCorrelativo().toString().padStart(6, "0");
+      const ruc = "20600000000";
+
+      /* IGV */
+      const total = pedido.total;
+      const base = total / 1.18;
+      const igv = total - base;
+
+      /* QR DATA */
+      const qrData = `${ruc}|${serie}|${correlativo}|${igv.toFixed(2)}|${total.toFixed(2)}|${pedido.fecha}`;
+      const qrCanvas = document.createElement("canvas");
+      new QRious({ element: qrCanvas, value: qrData, size: 150 });
+
+      pdf.setFontSize(18);
+      pdf.text("INTI PERÚ S.A.C.", 10, 15);
+
+      pdf.setFontSize(12);
+      pdf.text(`RUC: ${ruc}`, 10, 22);
+      pdf.text(`BOLETA ELECTRÓNICA`, 10, 30);
+      pdf.text(`${serie}-${correlativo}`, 10, 38);
+
+      pdf.text(`Cliente: ${pedido.usuario}`, 10, 48);
+      pdf.text(`Fecha: ${pedido.fecha}`, 10, 56);
+      pdf.text(`Método de Pago: ${pedido.metodoPago}`, 10, 64);
+
+      pdf.text("------------------------------------------------------------------", 10, 72);
+      pdf.text("Cant.   Descripción                        Unit.      Importe", 10, 80);
+      pdf.text("------------------------------------------------------------------", 10, 86);
+
+      let y = 95;
+
+      pedido.items.forEach(prod => {
+        pdf.text(`1      ${prod.nombre}                     ${prod.precio.toFixed(2)}      ${prod.precio.toFixed(2)}`, 10, y);
+        y += 7;
+      });
+
+      pdf.text("------------------------------------------------------------------", 10, y + 5);
+      pdf.text(`Valor Venta: S/ ${base.toFixed(2)}`, 10, y + 13);
+      pdf.text(`IGV (18%): S/ ${igv.toFixed(2)}`, 10, y + 21);
+      pdf.setFontSize(14);
+      pdf.text(`TOTAL: S/ ${total.toFixed(2)}`, 10, y + 32);
+
+      pdf.addImage(qrCanvas.toDataURL("image/png"), "PNG", 140, 20, 50, 50);
+
+      pdf.save("Boleta_SUNAT_IntiPeru.pdf");
+    }
+
+    /* 🔥 Pago + Historial + Boleta */
+    function procesarPago(metodo) {
+      const total = carrito.reduce((sum, i) => sum + i.precio, 0);
+
+      const pedido = {
+        usuario: localStorage.getItem("usuarioNombre"),
+        metodoPago: metodo,
+        items: carrito,
+        total: total,
+        fecha: new Date().toISOString()
+      };
+
+      let historial = JSON.parse(localStorage.getItem("historialPedidos")) || [];
+      historial.push(pedido);
+      localStorage.setItem("historialPedidos", JSON.stringify(historial));
+
+      generarBoletaSUNAT(pedido);
+
+      carrito = [];
+      localStorage.setItem("carrito", JSON.stringify(carrito));
+
+      alert("Pago realizado con " + metodo + " ✔️ Tu boleta SUNAT se descargó.");
+      window.location.href = "historial.html";
+    }
+
+    mostrarCarrito();
+    document.getElementById("vaciarBtn").addEventListener("click", vaciarCarrito);
+  </script>
+
+</body>
+</html>

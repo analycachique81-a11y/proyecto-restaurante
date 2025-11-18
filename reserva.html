@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reserva - Inti Perú</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <style>
+    body {
+      background: #fafafa;
+    }
+
+    .reserva-card {
+      max-width: 550px;
+      margin: auto;
+      border-radius: 12px;
+    }
+
+    .form-label {
+      font-weight: 600;
+    }
+
+    /* Toast elegante */
+    #toastReserva {
+      position: fixed;
+      bottom: 25px;
+      right: 25px;
+      z-index: 9999;
+      display: none;
+      padding: 15px 20px;
+      background: #d63333;
+      color: white;
+      font-weight: bold;
+      border-radius: 10px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.25);
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- 🔒 VALIDACIÓN DE LOGIN -->
+  <script>
+    if (!localStorage.getItem("usuarioNombre")) {
+      alert("Debes iniciar sesión para hacer una reserva.");
+      window.location.href = "login.html";
+    }
+  </script>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg navbar-dark bg-danger">
+    <div class="container">
+      <a class="navbar-brand fw-bold" href="index.html">☀️ Inti Perú</a>
+      <div class="collapse navbar-collapse">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item"><a class="nav-link" href="index.html">Inicio</a></li>
+          <li class="nav-item"><a class="nav-link" href="cart.html">Carrito</a></li>
+          <li class="nav-item"><a class="nav-link active" href="reserva.html">Reservas</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+
+  <!-- FORMULARIO -->
+  <div class="container my-5">
+    <h2 class="text-center mb-4">📅 Reserva tu Mesa</h2>
+
+    <form id="reservaForm" class="bg-white p-4 shadow reserva-card">
+      
+      <div class="mb-3">
+        <label for="nombre" class="form-label">Nombre completo</label>
+        <input type="text" class="form-control" id="nombre" required>
+      </div>
+
+      <div class="mb-3">
+        <label for="telefono" class="form-label">Teléfono</label>
+        <input type="tel" class="form-control" id="telefono" required>
+      </div>
+
+      <div class="mb-3">
+        <label for="fecha" class="form-label">Fecha</label>
+        <input type="date" class="form-control" id="fecha" required>
+      </div>
+
+      <div class="mb-3">
+        <label for="hora" class="form-label">Hora</label>
+        <input type="time" class="form-control" id="hora" required>
+      </div>
+
+      <div class="mb-3">
+        <label for="personas" class="form-label">Número de personas</label>
+        <input type="number" class="form-control" id="personas" min="1" max="20" required>
+      </div>
+
+      <button type="submit" class="btn btn-danger w-100">✅ Confirmar Reserva</button>
+    </form>
+  </div>
+
+  <!-- TOAST DE CONFIRMACIÓN -->
+  <div id="toastReserva">Reserva confirmada ✔️</div>
+
+  <!-- Script -->
+  <script>
+    // Establecer fecha mínima (hoy)
+    const hoy = new Date().toISOString().split("T")[0];
+    document.getElementById("fecha").min = hoy;
+
+    // Evento de formulario
+    document.getElementById("reservaForm").addEventListener("submit", function(e){
+      e.preventDefault();
+
+      const nombre = document.getElementById("nombre").value;
+      const telefono = document.getElementById("telefono").value;
+      const fecha = document.getElementById("fecha").value;
+      const hora = document.getElementById("hora").value;
+      const personas = document.getElementById("personas").value;
+
+      // Toast estilo pro
+      const toast = document.getElementById("toastReserva");
+      toast.style.display = "block";
+      setTimeout(() => toast.style.display = "none", 2500);
+
+      // Mensaje detallado
+      alert(
+        `✅ Reserva confirmada para ${nombre}\n` +
+        `📞 Tel: ${telefono}\n` +
+        `📅 ${fecha} - ⏰ ${hora}\n` +
+        `🍽️ ${personas} personas`
+      );
+
+      document.getElementById("reservaForm").reset();
+    });
+  </script>
+
+</body>
+</html>
